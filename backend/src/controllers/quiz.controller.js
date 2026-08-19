@@ -12,6 +12,7 @@ export const quizSchema = z.object({
     difficulty: difficulty.default("MEDIUM"),
     categoryId: z.string().optional().nullable(),
     maxAttempts: z.coerce.number().int().positive().default(1),
+    passingScorePercent: z.coerce.number().min(0).max(100).default(60),
     startDate: z.string().datetime().optional().nullable(),
     endDate: z.string().datetime().optional().nullable()
   })
@@ -93,4 +94,3 @@ function normalizeQuiz(body) {
     endDate: body.endDate ? new Date(body.endDate) : null
   };
 }
-

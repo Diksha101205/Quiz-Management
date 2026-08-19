@@ -1,7 +1,7 @@
 import { BarChart3, BookOpen, CheckCircle2, Clock, Edit3, LogOut, Moon, Play, Search, Shield, Sun, Trash2, Trophy, UserPlus, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "./api";
-import { demoLeaderboard, demoQuizzes } from "./data/demo";
+import { demoLeaderboard, demoQuizDetails, demoQuizzes } from "./data/demo";
 
 const emptyAuth = { name: "", email: "", password: "" };
 
@@ -148,6 +148,7 @@ export default function App() {
           {[
             ["dashboard", "Dashboard", BarChart3],
             ["quizzes", "Quizzes", BookOpen],
+            ...(user.role === "ADMIN" ? [["categories", "Categories", CheckCircle2]] : []),
             [user.role === "ADMIN" ? "users" : "history", user.role === "ADMIN" ? "Users" : "History", Users],
             ["leaderboard", "Leaderboard", Trophy]
           ].map(([id, label, Icon]) => (
@@ -160,6 +161,7 @@ export default function App() {
         <section>
           {view === "dashboard" && <Dashboard user={user} token={token} setView={setView} />}
           {view === "quizzes" && (user.role === "ADMIN" ? <AdminQuizzes token={token} /> : <StudentQuizzes token={token} />)}
+          {view === "categories" && <CategoryManager token={token} />}
           {view === "users" && <AdminUsers token={token} />}
           {view === "history" && <History token={token} />}
           {view === "leaderboard" && <Leaderboard />}
@@ -222,12 +224,90 @@ function Dashboard({ user, token, setView }) {
   );
 }
 
+function CategoryManager({ token }) {
+  const [categories, setCategories] = useState([]);
+  const [form, setForm] = useState({ id: null, name: "" });
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const load = () => api("/categories").then(setCategories).catch(() => setCategories([]));
+
+  useEffect(() => { load(); }, []);
+
+  const saveCategory = async (event) => {
+    event.preventDefault();
+    setMessage("");
+    setError("");
+    try {
+      await api(form.id ? `/categories/${form.id}` : "/categories", {
+        method: form.id ? "PUT" : "POST",
+        token,
+        body: { name: form.name }
+      });
+      setForm({ id: null, name: "" });
+      setMessage(form.id ? "Category updated" : "Category created");
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const deleteCategory = async (categoryId) => {
+    setMessage("");
+    setError("");
+    try {
+      await api(`/categories/${categoryId}`, { method: "DELETE", token });
+      if (form.id === categoryId) setForm({ id: null, name: "" });
+      setMessage("Category deleted");
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  return (
+    <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+      <div className="panel overflow-hidden">
+        <div className="border-b border-slate-200 p-5 dark:border-slate-800">
+          <h2 className="text-2xl font-black">Category management</h2>
+          <p className="text-sm text-slate-500">Organize quizzes by subject or module.</p>
+        </div>
+        {categories.map((category) => (
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-4 last:border-0 dark:border-slate-800" key={category.id}>
+            <p className="font-black">{category.name}</p>
+            <div className="flex gap-2">
+              <button className="btn btn-ghost" onClick={() => setForm(category)}><Edit3 size={18} /> Edit</button>
+              <button className="btn btn-ghost" onClick={() => deleteCategory(category.id)}><Trash2 size={18} /> Delete</button>
+            </div>
+          </div>
+        ))}
+        {categories.length === 0 && <p className="p-5 text-slate-500">No categories yet.</p>}
+      </div>
+      <div className="space-y-4">
+        <form className="panel space-y-3 p-5" onSubmit={saveCategory}>
+          <div className="flex items-center justify-between">
+            <h3 className="font-black">{form.id ? "Edit category" : "Create category"}</h3>
+            {form.id && <button type="button" className="text-sm font-bold text-coral" onClick={() => setForm({ id: null, name: "" })}>Cancel</button>}
+          </div>
+          <input className="field" placeholder="Category name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+          <button className="btn btn-primary w-full"><CheckCircle2 size={18} /> {form.id ? "Update category" : "Save category"}</button>
+        </form>
+        {message && <p className="rounded-md bg-mint/10 p-3 text-sm font-bold text-mint">{message}</p>}
+        {error && <p className="rounded-md bg-coral/10 p-3 text-sm font-bold text-coral">{error}</p>}
+      </div>
+    </div>
+  );
+}
+
 function AdminQuizzes({ token }) {
   const [quizzes, setQuizzes] = useState([]);
   const [categories, setCategories] = useState([]);
-  const blankForm = { id: null, title: "", description: "", durationMinutes: 10, difficulty: "MEDIUM", maxAttempts: 1, categoryId: "" };
+  const blankForm = { id: null, title: "", description: "", durationMinutes: 10, difficulty: "MEDIUM", maxAttempts: 1, passingScorePercent: 60, categoryId: "" };
+  const blankQuestion = { id: null, quizId: "", text: "", options: ["", "", "", ""], correctIndex: 0, explanation: "", points: 1, negativePoints: 0 };
   const [form, setForm] = useState(blankForm);
-  const [question, setQuestion] = useState({ quizId: "", text: "", options: "Option A\nOption B\nOption C\nOption D", correctIndex: 0, points: 1, negativePoints: 0 });
+  const [question, setQuestion] = useState(blankQuestion);
+  const [questions, setQuestions] = useState([]);
+  const [selectedQuizId, setSelectedQuizId] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -237,6 +317,13 @@ function AdminQuizzes({ token }) {
   };
 
   useEffect(load, [token]);
+  useEffect(() => {
+    if (!selectedQuizId) {
+      setQuestions([]);
+      return;
+    }
+    api(`/quizzes/${selectedQuizId}/questions`, { token }).then(setQuestions).catch(() => setQuestions([]));
+  }, [selectedQuizId, token]);
 
   const saveQuiz = async (event) => {
     event.preventDefault();
@@ -257,17 +344,72 @@ function AdminQuizzes({ token }) {
     event.preventDefault();
     setError("");
     try {
-      await api(`/quizzes/${question.quizId}/questions`, {
-        method: "POST",
+      const quizId = question.quizId || selectedQuizId;
+      const options = question.options.map((option) => option.trim()).filter(Boolean);
+      const body = {
+        text: question.text,
+        options,
+        correctIndex: Number(question.correctIndex),
+        explanation: question.explanation,
+        points: Number(question.points),
+        negativePoints: Number(question.negativePoints)
+      };
+      await api(question.id ? `/questions/${question.id}` : `/quizzes/${quizId}/questions`, {
+        method: question.id ? "PUT" : "POST",
         token,
-        body: { ...question, options: question.options.split("\n").filter(Boolean) }
+        body
       });
-      setMessage("Question added");
-      setQuestion({ ...question, text: "" });
+      setMessage(question.id ? "Question updated" : "Question added");
+      setQuestion({ ...blankQuestion, quizId });
+      setSelectedQuizId(quizId);
+      load();
+      api(`/quizzes/${quizId}/questions`, { token }).then(setQuestions).catch(() => {});
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const editQuestion = (item) => {
+    setSelectedQuizId(item.quizId);
+    setQuestion({
+      id: item.id,
+      quizId: item.quizId,
+      text: item.text,
+      options: [...item.options, "", "", "", ""].slice(0, Math.max(4, item.options.length)),
+      correctIndex: item.correctIndex,
+      explanation: item.explanation || "",
+      points: item.points,
+      negativePoints: item.negativePoints
+    });
+  };
+
+  const deleteQuestion = async (questionId) => {
+    setError("");
+    try {
+      await api(`/questions/${questionId}`, { method: "DELETE", token });
+      setMessage("Question deleted");
+      if (question.id === questionId) setQuestion({ ...blankQuestion, quizId: selectedQuizId });
+      api(`/quizzes/${selectedQuizId}/questions`, { token }).then(setQuestions).catch(() => {});
       load();
     } catch (err) {
       setError(err.message);
     }
+  };
+
+  const updateOption = (optionIndex, value) => {
+    const nextOptions = [...question.options];
+    nextOptions[optionIndex] = value;
+    setQuestion({ ...question, options: nextOptions });
+  };
+
+  const addOption = () => {
+    if (question.options.length < 6) setQuestion({ ...question, options: [...question.options, ""] });
+  };
+
+  const removeOption = (optionIndex) => {
+    if (question.options.length <= 2) return;
+    const nextOptions = question.options.filter((_, index) => index !== optionIndex);
+    setQuestion({ ...question, options: nextOptions, correctIndex: Math.min(question.correctIndex, nextOptions.length - 1) });
   };
 
   const editQuiz = (quiz) => {
@@ -278,6 +420,7 @@ function AdminQuizzes({ token }) {
       durationMinutes: quiz.durationMinutes,
       difficulty: quiz.difficulty,
       maxAttempts: quiz.maxAttempts || 1,
+      passingScorePercent: quiz.passingScorePercent || 60,
       categoryId: quiz.categoryId || ""
     });
   };
@@ -315,6 +458,10 @@ function AdminQuizzes({ token }) {
             </div>
             <div className="flex flex-wrap gap-2">
               <button className="btn btn-ghost" title="Edit quiz" onClick={() => editQuiz(quiz)}><Edit3 size={18} /> Edit</button>
+              <button className="btn btn-ghost" onClick={() => {
+                setSelectedQuizId(quiz.id);
+                setQuestion({ ...blankQuestion, quizId: quiz.id });
+              }}>Questions</button>
               <button className="btn btn-ghost" title="Delete quiz" onClick={() => deleteQuiz(quiz.id)}><Trash2 size={18} /> Delete</button>
               <button className="btn btn-primary" onClick={() => api(`/quizzes/${quiz.id}/publish`, { method: "PATCH", token }).then(load).catch((err) => setError(err.message))}>
                 {quiz.isPublished ? "Unpublish" : "Publish"}
@@ -334,6 +481,7 @@ function AdminQuizzes({ token }) {
           <textarea className="field" placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           <input className="field" type="number" min="1" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} />
           <input className="field" type="number" min="1" value={form.maxAttempts} onChange={(e) => setForm({ ...form, maxAttempts: e.target.value })} />
+          <input className="field" type="number" min="0" max="100" value={form.passingScorePercent} onChange={(e) => setForm({ ...form, passingScorePercent: e.target.value })} />
           <select className="field" value={form.difficulty} onChange={(e) => setForm({ ...form, difficulty: e.target.value })}>
             <option>EASY</option><option>MEDIUM</option><option>HARD</option>
           </select>
@@ -344,16 +492,55 @@ function AdminQuizzes({ token }) {
           <button className="btn btn-primary w-full"><CheckCircle2 size={18} /> {form.id ? "Update quiz" : "Save quiz"}</button>
         </form>
         <form className="panel space-y-3 p-5" onSubmit={addQuestion}>
-          <h3 className="font-black">Add question</h3>
-          <select className="field" value={question.quizId} onChange={(e) => setQuestion({ ...question, quizId: e.target.value })}>
+          <div className="flex items-center justify-between">
+            <h3 className="font-black">{question.id ? "Edit question" : "Add question"}</h3>
+            {question.id && <button type="button" className="text-sm font-bold text-coral" onClick={() => setQuestion({ ...blankQuestion, quizId: selectedQuizId })}>Cancel</button>}
+          </div>
+          <select className="field" value={question.quizId || selectedQuizId} onChange={(e) => {
+            setSelectedQuizId(e.target.value);
+            setQuestion({ ...question, quizId: e.target.value });
+          }}>
             <option value="">Select quiz</option>
             {quizzes.map((quiz) => <option value={quiz.id} key={quiz.id}>{quiz.title}</option>)}
           </select>
           <textarea className="field" placeholder="Question" value={question.text} onChange={(e) => setQuestion({ ...question, text: e.target.value })} />
-          <textarea className="field" value={question.options} onChange={(e) => setQuestion({ ...question, options: e.target.value })} />
-          <input className="field" type="number" min="0" value={question.correctIndex} onChange={(e) => setQuestion({ ...question, correctIndex: e.target.value })} />
-          <button className="btn btn-primary w-full"><UserPlus size={18} /> Add question</button>
+          <div className="space-y-2">
+            {question.options.map((option, optionIndex) => (
+              <div className="grid grid-cols-[1fr_auto] gap-2" key={optionIndex}>
+                <input className="field" placeholder={`Option ${optionIndex + 1}`} value={option} onChange={(e) => updateOption(optionIndex, e.target.value)} />
+                <button type="button" className="btn btn-ghost" onClick={() => removeOption(optionIndex)} title="Remove option"><Trash2 size={16} /></button>
+              </div>
+            ))}
+            {question.options.length < 6 && <button type="button" className="btn btn-ghost w-full" onClick={addOption}>Add option</button>}
+          </div>
+          <select className="field" value={question.correctIndex} onChange={(e) => setQuestion({ ...question, correctIndex: Number(e.target.value) })}>
+            {question.options.map((_, optionIndex) => <option value={optionIndex} key={optionIndex}>Correct answer: option {optionIndex + 1}</option>)}
+          </select>
+          <textarea className="field" placeholder="Explanation shown after submission" value={question.explanation} onChange={(e) => setQuestion({ ...question, explanation: e.target.value })} />
+          <div className="grid grid-cols-2 gap-2">
+            <input className="field" type="number" min="0.25" step="0.25" value={question.points} onChange={(e) => setQuestion({ ...question, points: e.target.value })} />
+            <input className="field" type="number" min="0" step="0.25" value={question.negativePoints} onChange={(e) => setQuestion({ ...question, negativePoints: e.target.value })} />
+          </div>
+          <button className="btn btn-primary w-full"><UserPlus size={18} /> {question.id ? "Update question" : "Add question"}</button>
         </form>
+        {selectedQuizId && (
+          <div className="panel overflow-hidden">
+            <div className="border-b border-slate-200 p-4 dark:border-slate-800">
+              <h3 className="font-black">Questions</h3>
+            </div>
+            {questions.map((item, itemIndex) => (
+              <div className="border-b border-slate-100 p-4 last:border-0 dark:border-slate-800" key={item.id}>
+                <p className="font-black">{itemIndex + 1}. {item.text}</p>
+                <p className="mt-1 text-sm text-slate-500">Correct: {item.options[item.correctIndex]}</p>
+                <div className="mt-3 flex gap-2">
+                  <button className="btn btn-ghost" onClick={() => editQuestion(item)}><Edit3 size={18} /> Edit</button>
+                  <button className="btn btn-ghost" onClick={() => deleteQuestion(item.id)}><Trash2 size={18} /> Delete</button>
+                </div>
+              </div>
+            ))}
+            {questions.length === 0 && <p className="p-4 text-sm text-slate-500">No questions for this quiz yet.</p>}
+          </div>
+        )}
         {message && <p className="rounded-md bg-mint/10 p-3 text-sm font-bold text-mint">{message}</p>}
         {error && <p className="rounded-md bg-coral/10 p-3 text-sm font-bold text-coral">{error}</p>}
       </div>
@@ -365,12 +552,61 @@ function StudentQuizzes({ token }) {
   const [quizzes, setQuizzes] = useState([]);
   const [search, setSearch] = useState("");
   const [attempt, setAttempt] = useState(null);
+  const [selectedQuiz, setSelectedQuiz] = useState(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     api(`/quizzes?search=${encodeURIComponent(search)}`).then(setQuizzes).catch(() => setQuizzes(demoQuizzes));
   }, [search]);
 
+  const openDetails = async (quiz) => {
+    setError("");
+    try {
+      setSelectedQuiz(await api(`/quizzes/${quiz.id}`));
+    } catch {
+      setSelectedQuiz({ ...quiz, questions: demoQuizDetails[quiz.id]?.questions || [] });
+    }
+  };
+
+  const startQuiz = async (quizId) => {
+    setError("");
+    try {
+      setAttempt(await api(`/quizzes/${quizId}/start`, { method: "POST", token }));
+    } catch (err) {
+      if (demoQuizDetails[quizId]) {
+        setAttempt({ attemptId: `demo-${Date.now()}`, quiz: demoQuizDetails[quizId], demo: true });
+        return;
+      }
+      setError(err.message);
+    }
+  };
+
   if (attempt) return <Attempt token={token} attempt={attempt} onDone={() => setAttempt(null)} />;
+
+  if (selectedQuiz) {
+    return (
+      <div className="space-y-5">
+        <button className="btn btn-ghost" onClick={() => setSelectedQuiz(null)}>Back to listing</button>
+        <div className="panel p-6">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-sm font-bold text-mint">{selectedQuiz.category?.name || "General"}</p>
+              <h2 className="mt-1 text-3xl font-black">{selectedQuiz.title}</h2>
+              <p className="mt-3 max-w-2xl text-slate-600 dark:text-slate-300">{selectedQuiz.description}</p>
+            </div>
+            <span className="rounded-md bg-gold/15 px-3 py-2 text-sm font-black text-gold">{selectedQuiz.difficulty || "PRACTICE"}</span>
+          </div>
+          <div className="mt-6 grid gap-3 md:grid-cols-3">
+            <div className="rounded-md bg-slate-100 p-4 dark:bg-slate-800"><p className="text-sm text-slate-500">Duration</p><p className="font-black">{selectedQuiz.durationMinutes} min</p></div>
+            <div className="rounded-md bg-slate-100 p-4 dark:bg-slate-800"><p className="text-sm text-slate-500">Questions</p><p className="font-black">{selectedQuiz.questions?.length || selectedQuiz._count?.questions || 0}</p></div>
+            <div className="rounded-md bg-slate-100 p-4 dark:bg-slate-800"><p className="text-sm text-slate-500">Attempts</p><p className="font-black">{selectedQuiz.maxAttempts || "Allowed"}</p></div>
+          </div>
+          {error && <p className="mt-4 rounded-md bg-coral/10 p-3 text-sm font-bold text-coral">{error}</p>}
+          <button className="btn btn-primary mt-6" onClick={() => startQuiz(selectedQuiz.id)}><Play size={18} /> Start quiz</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -391,8 +627,8 @@ function StudentQuizzes({ token }) {
             <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{quiz.description}</p>
             <div className="mt-4 flex items-center justify-between">
               <span className="flex items-center gap-2 text-sm font-bold"><Clock size={16} /> {quiz.durationMinutes} min</span>
-              <button className="btn btn-primary" onClick={() => api(`/quizzes/${quiz.id}/start`, { method: "POST", token }).then(setAttempt)}>
-                <Play size={18} /> Start
+              <button className="btn btn-primary" onClick={() => openDetails(quiz)}>
+                Details
               </button>
             </div>
           </div>
@@ -407,6 +643,7 @@ function Attempt({ token, attempt, onDone }) {
   const [index, setIndex] = useState(0);
   const [seconds, setSeconds] = useState(attempt.quiz.durationMinutes * 60);
   const [result, setResult] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const question = attempt.quiz.questions[index];
 
   useEffect(() => {
@@ -415,17 +652,43 @@ function Attempt({ token, attempt, onDone }) {
     return () => clearInterval(timer);
   }, [result]);
 
-  const submit = async () => {
-    const payload = await api(`/quizzes/${attempt.quiz.id}/submit`, { method: "POST", token, body: { attemptId: attempt.attemptId, answers } });
-    setResult(payload);
+  const submit = async (autoSubmitted = false) => {
+    if (result || submitting) return;
+    setSubmitting(true);
+    if (attempt.demo) {
+      const totalPoints = attempt.quiz.questions.reduce((sum, item) => sum + Number(item.points || 1), 0);
+      let score = 0;
+      const review = attempt.quiz.questions.map((item) => {
+        const selectedIndex = answers[item.id];
+        const isSkipped = selectedIndex === undefined;
+        const isCorrect = selectedIndex === item.correctIndex;
+        const earnedPoints = isSkipped ? 0 : isCorrect ? Number(item.points || 1) : 0;
+        score += earnedPoints;
+        return { ...item, questionId: item.id, selectedIndex, isSkipped, isCorrect, earnedPoints };
+      });
+      const percentage = totalPoints ? (score / totalPoints) * 100 : 0;
+      const passingScorePercent = attempt.quiz.passingScorePercent || 60;
+      setResult({ attempt: { score, totalPoints, percentage, passed: percentage >= passingScorePercent }, review, passingScorePercent });
+      setSubmitting(false);
+      return;
+    }
+    try {
+      const payload = await api(`/quizzes/${attempt.quiz.id}/submit`, { method: "POST", token, body: { attemptId: attempt.attemptId, answers, autoSubmitted } });
+      setResult(payload);
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  useEffect(() => {
+    if (seconds === 0 && !result) submit(true);
+  }, [seconds, result]);
 
   if (result) {
     return (
-      <div className="panel p-6">
-        <h2 className="text-3xl font-black">Result</h2>
-        <p className="mt-2 text-xl font-bold text-mint">Score: {result.attempt.score} / {result.attempt.totalPoints}</p>
-        <button className="btn btn-primary mt-5" onClick={onDone}>Back to quizzes</button>
+      <div className="space-y-5">
+        <ResultReview result={result} />
+        <button className="btn btn-primary" onClick={onDone}>Back to quizzes</button>
       </div>
     );
   }
@@ -435,6 +698,17 @@ function Attempt({ token, attempt, onDone }) {
       <div className="mb-5 flex items-center justify-between gap-4">
         <h2 className="text-2xl font-black">{attempt.quiz.title}</h2>
         <span className="rounded-md bg-coral/10 px-3 py-2 font-black text-coral">{Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}</span>
+      </div>
+      <div className="mb-5 flex flex-wrap gap-2">
+        {attempt.quiz.questions.map((item, questionIndex) => (
+          <button
+            className={`h-9 w-9 rounded-md text-sm font-black ${questionIndex === index ? "bg-mint text-white" : answers[item.id] !== undefined ? "bg-gold/20 text-gold" : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}
+            key={item.id}
+            onClick={() => setIndex(questionIndex)}
+          >
+            {questionIndex + 1}
+          </button>
+        ))}
       </div>
       <p className="text-lg font-bold">{index + 1}. {question.text}</p>
       <div className="mt-4 grid gap-3">
@@ -449,8 +723,55 @@ function Attempt({ token, attempt, onDone }) {
         {index < attempt.quiz.questions.length - 1 ? (
           <button className="btn btn-primary" onClick={() => setIndex(index + 1)}>Next</button>
         ) : (
-          <button className="btn btn-primary" onClick={submit}>Submit quiz</button>
+          <button className="btn btn-primary" disabled={submitting} onClick={() => submit(false)}>{submitting ? "Submitting" : "Submit quiz"}</button>
         )}
+      </div>
+    </div>
+  );
+}
+
+function ResultReview({ result }) {
+  const attempt = result.attempt;
+  const percentage = Number(result.percentage ?? attempt.percentage ?? 0);
+  const passed = result.passed ?? attempt.passed;
+  const passingScorePercent = Number(result.passingScorePercent ?? 60);
+
+  return (
+    <div className="space-y-5">
+      <div className="panel p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-black">Result</h2>
+            <p className="mt-2 text-xl font-bold text-mint">Score: {attempt.score} / {attempt.totalPoints}</p>
+          </div>
+          <span className={`rounded-md px-3 py-2 text-sm font-black ${passed ? "bg-mint/10 text-mint" : "bg-coral/10 text-coral"}`}>
+            {passed ? "Passed" : "Failed"} · {percentage.toFixed(1)}%
+          </span>
+        </div>
+        <p className="mt-4 text-sm text-slate-500">Passing score: {passingScorePercent}%</p>
+      </div>
+      <div className="panel overflow-hidden">
+        <div className="border-b border-slate-200 p-5 dark:border-slate-800">
+          <h3 className="text-xl font-black">Answer review</h3>
+        </div>
+        {(result.review || []).map((item, itemIndex) => (
+          <div className="border-b border-slate-100 p-5 last:border-0 dark:border-slate-800" key={item.questionId || item.id}>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <p className="font-black">{itemIndex + 1}. {item.text}</p>
+              <span className={`rounded-md px-2 py-1 text-xs font-black ${item.isCorrect ? "bg-mint/10 text-mint" : "bg-coral/10 text-coral"}`}>
+                {item.isSkipped ? "Skipped" : item.isCorrect ? "Correct" : "Incorrect"}
+              </span>
+            </div>
+            <div className="mt-3 grid gap-2">
+              {item.options.map((option, optionIndex) => (
+                <p className={`rounded-md p-3 text-sm font-semibold ${optionIndex === item.correctIndex ? "bg-mint/10 text-mint" : optionIndex === item.selectedIndex ? "bg-coral/10 text-coral" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`} key={option}>
+                  {option}
+                </p>
+              ))}
+            </div>
+            {item.explanation && <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{item.explanation}</p>}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -522,8 +843,48 @@ function AdminUsers({ token }) {
 
 function History({ token }) {
   const [attempts, setAttempts] = useState([]);
+  const [selectedResult, setSelectedResult] = useState(null);
+  const [error, setError] = useState("");
   useEffect(() => { api("/attempts", { token }).then(setAttempts).catch(() => setAttempts([])); }, [token]);
-  return <ListPanel title="Previous attempts" rows={attempts.map((attempt) => [`${attempt.quiz.title}`, `${attempt.score} / ${attempt.totalPoints}`, attempt.status])} />;
+
+  const openAttempt = async (attemptId) => {
+    setError("");
+    try {
+      setSelectedResult(await api(`/attempts/${attemptId}`, { token }));
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  if (selectedResult) {
+    return (
+      <div className="space-y-5">
+        <button className="btn btn-ghost" onClick={() => setSelectedResult(null)}>Back to history</button>
+        <ResultReview result={selectedResult} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="panel overflow-hidden">
+      <div className="border-b border-slate-200 p-5 dark:border-slate-800">
+        <h2 className="text-2xl font-black">Attempt history</h2>
+      </div>
+      {error && <p className="m-4 rounded-md bg-coral/10 p-3 text-sm font-bold text-coral">{error}</p>}
+      {attempts.map((attempt) => (
+        <div className="grid gap-3 border-b border-slate-100 p-4 last:border-0 dark:border-slate-800 md:grid-cols-[1fr_140px_120px_150px]" key={attempt.id}>
+          <div>
+            <p className="font-black">{attempt.quiz.title}</p>
+            <p className="text-sm text-slate-500">{attempt.quiz.category?.name || "General"} · {new Date(attempt.startedAt).toLocaleDateString()}</p>
+          </div>
+          <p className="font-semibold">{attempt.score} / {attempt.totalPoints}</p>
+          <span className={`flex items-center justify-center rounded-md px-2 py-1 text-xs font-black ${attempt.passed ? "bg-mint/10 text-mint" : "bg-coral/10 text-coral"}`}>{attempt.passed ? "Passed" : "Failed"}</span>
+          <button className="btn btn-ghost" onClick={() => openAttempt(attempt.id)}>Review</button>
+        </div>
+      ))}
+      {attempts.length === 0 && <p className="p-5 text-slate-500">No attempts yet.</p>}
+    </div>
+  );
 }
 
 function Leaderboard() {

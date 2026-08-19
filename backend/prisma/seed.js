@@ -42,6 +42,7 @@ async function main() {
       difficulty: "EASY",
       isPublished: true,
       maxAttempts: 3,
+      passingScorePercent: 60,
       categoryId: category.id,
       questions: {
         create: [
@@ -49,12 +50,14 @@ async function main() {
             text: "What is JSX?",
             options: ["A database", "A syntax extension for JavaScript", "A CSS framework", "A package manager"],
             correctIndex: 1,
+            explanation: "JSX lets developers describe UI with XML-like syntax inside JavaScript.",
             points: 2
           },
           {
             text: "Which hook stores component state?",
             options: ["useRoute", "useState", "useFetch", "useStyle"],
             correctIndex: 1,
+            explanation: "useState stores local component state and gives a setter function to update it.",
             points: 2
           }
         ]
@@ -71,4 +74,3 @@ main()
     process.exit(1);
   })
   .finally(async () => prisma.$disconnect());
-

@@ -50,6 +50,7 @@ model Quiz {
   difficulty      Difficulty    @default(MEDIUM)
   isPublished     Boolean       @default(false)
   maxAttempts     Int           @default(1)
+  passingScorePercent Float     @default(60)
   startDate       DateTime?
   endDate         DateTime?
   categoryId      String?
@@ -67,6 +68,7 @@ model Question {
   text           String
   options        Json
   correctIndex   Int
+  explanation     String?
   points         Float    @default(1)
   negativePoints Float    @default(0)
   createdAt      DateTime @default(now())
@@ -83,9 +85,10 @@ model QuizAttempt {
   answers     Json          @default("{}")
   score       Float         @default(0)
   totalPoints Float         @default(0)
+  percentage  Float         @default(0)
+  passed      Boolean       @default(false)
   startedAt   DateTime      @default(now())
   submittedAt DateTime?
 
   @@index([userId, quizId])
 }
-

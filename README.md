@@ -164,3 +164,35 @@ Day 5 Quiz Management:
 - Edit quiz
 - Delete quiz
 - Publish and unpublish quiz
+
+Day 6 Category & Question Management:
+
+- Category create, edit, and delete
+- Add quiz questions
+- Add and remove answer options
+- Select the correct answer
+- Edit and delete questions
+
+Day 7 Student Quiz Interface:
+
+- Quiz listing
+- Quiz details
+- Start quiz
+- Question navigation
+- Answer selection
+- Countdown timer with auto-submit
+
+Day 8 Quiz Submission:
+
+- Manual quiz submission
+- Automatic submission when time reaches zero
+- Backend score calculation
+- Pass/fail calculation from quiz passing percentage
+
+Day 9 Results:
+
+- Result page
+- Answer review
+- Correct and incorrect answer highlighting
+- Explanations after submission
+- Attempt history with review access
