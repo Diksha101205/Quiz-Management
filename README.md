@@ -1,2 +1,137 @@
-# Quiz Management
+# Quiz Management & Online Assessment Platform
+
+A full-stack quiz platform with two roles:
+
+- Admin: manages users, categories, quizzes, questions, publishing, attempts, analytics, and leaderboard data.
+- Student: registers, logs in, browses quizzes, starts timed attempts, submits answers, views history, and checks leaderboard ranking.
+
+## Tech Stack
+
+- Frontend: React, Vite, Tailwind CSS, lucide-react
+- Backend: Node.js, Express, Prisma
+- Database: PostgreSQL
+- Security foundation: password hashing, JWT authentication, role-based authorization, request validation, rate limiting, Helmet headers, backend-owned scoring
+
+## Project Structure
+
+```text
+backend/
+  prisma/schema.prisma
+  prisma/seed.js
+  src/app.js
+  src/controllers/
+  src/middleware/
+  src/routes/
+frontend/
+  src/App.jsx
+  src/api.js
+  src/styles.css
+docker-compose.yml
+```
+
+## Day 1 Setup
+
+1. Copy environment files.
+
+```bash
+cp .env.example backend/.env
+cp frontend/.env.example frontend/.env
+```
+
+2. Install dependencies.
+
+```bash
+npm install
+npm run install:all
+```
+
+3. Start PostgreSQL.
+
+```bash
+npm run db:up
+```
+
+4. Create database tables and seed demo data.
+
+```bash
+npm run db:migrate
+npm run db:seed
+```
+
+5. Start the app.
+
+```bash
+npm run dev
+```
+
+Frontend: http://localhost:5173  
+Backend health check: http://localhost:5000/api/health
+
+## Demo Accounts
+
+- Admin: `admin@quiz.local` / `Admin@12345`
+- Student: `student@quiz.local` / `Student@12345`
+
+## Implemented API Endpoints
+
+Authentication:
+
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `POST /api/auth/logout`
+- `POST /api/auth/forgot-password`
+- `POST /api/auth/reset-password`
+- `GET /api/auth/me`
+
+Users:
+
+- `GET /api/users`
+- `GET /api/users/:id`
+- `PUT /api/users/:id`
+- `DELETE /api/users/:id`
+- `PATCH /api/users/:id/status`
+
+Categories:
+
+- `GET /api/categories`
+- `POST /api/categories`
+- `PUT /api/categories/:id`
+- `DELETE /api/categories/:id`
+
+Quizzes:
+
+- `GET /api/quizzes`
+- `GET /api/quizzes/:id`
+- `POST /api/quizzes`
+- `PUT /api/quizzes/:id`
+- `DELETE /api/quizzes/:id`
+- `PATCH /api/quizzes/:id/publish`
+
+Questions:
+
+- `GET /api/quizzes/:quizId/questions`
+- `POST /api/quizzes/:quizId/questions`
+- `PUT /api/questions/:id`
+- `DELETE /api/questions/:id`
+
+Attempts:
+
+- `POST /api/quizzes/:quizId/start`
+- `POST /api/quizzes/:quizId/submit`
+- `GET /api/attempts`
+- `GET /api/attempts/:id`
+
+Admin Results:
+
+- `GET /api/admin/attempts`
+- `GET /api/admin/attempts/:id`
+- `GET /api/admin/analytics`
+
+Leaderboard:
+
+- `GET /api/leaderboard`
+
+## Security Notes
+
+Correct answers, scores, quiz availability, user roles, and attempt eligibility are checked by the backend. The frontend only displays quiz content and sends selected answers.
 

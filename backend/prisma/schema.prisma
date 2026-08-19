@@ -1,0 +1,91 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  STUDENT
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum AttemptStatus {
+  IN_PROGRESS
+  SUBMITTED
+}
+
+model User {
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  passwordHash String
+  role         Role          @default(STUDENT)
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  attempts     QuizAttempt[]
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  quizzes   Quiz[]
+}
+
+model Quiz {
+  id              String        @id @default(cuid())
+  title           String
+  description     String
+  durationMinutes Int
+  difficulty      Difficulty    @default(MEDIUM)
+  isPublished     Boolean       @default(false)
+  maxAttempts     Int           @default(1)
+  startDate       DateTime?
+  endDate         DateTime?
+  categoryId      String?
+  category        Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  questions       Question[]
+  attempts        QuizAttempt[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model Question {
+  id             String   @id @default(cuid())
+  quizId         String
+  quiz           Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  text           String
+  options        Json
+  correctIndex   Int
+  points         Float    @default(1)
+  negativePoints Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model QuizAttempt {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizId      String
+  quiz        Quiz          @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  status      AttemptStatus @default(IN_PROGRESS)
+  answers     Json          @default("{}")
+  score       Float         @default(0)
+  totalPoints Float         @default(0)
+  startedAt   DateTime      @default(now())
+  submittedAt DateTime?
+
+  @@index([userId, quizId])
+}
+
