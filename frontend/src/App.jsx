@@ -1,7 +1,7 @@
 import { BarChart3, BookOpen, CheckCircle2, Clock, Edit3, LogOut, Moon, Play, Search, Shield, Sun, Trash2, Trophy, UserPlus, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "./api";
-import { demoLeaderboard, demoQuizDetails, demoQuizzes } from "./data/demo";
+import { demoAttempts, demoLeaderboard, demoQuizDetails, demoQuizzes } from "./data/demo";
 
 const emptyAuth = { name: "", email: "", password: "" };
 
@@ -173,19 +173,31 @@ export default function App() {
 
 function Dashboard({ user, token, setView }) {
   const [analytics, setAnalytics] = useState(null);
+  const [attempts, setAttempts] = useState([]);
 
   useEffect(() => {
     if (user.role === "ADMIN") api("/admin/analytics", { token }).then(setAnalytics).catch(() => {});
+    if (user.role === "STUDENT") api("/attempts", { token }).then(setAttempts).catch(() => setAttempts(demoAttempts));
   }, [token, user.role]);
 
+  const submittedAttempts = attempts.filter((attempt) => attempt.status === "SUBMITTED");
+  const averageScore = submittedAttempts.length
+    ? submittedAttempts.reduce((sum, attempt) => sum + Number(attempt.percentage || 0), 0) / submittedAttempts.length
+    : 0;
+  const passedAttempts = submittedAttempts.filter((attempt) => attempt.passed).length;
   const stats = user.role === "ADMIN"
     ? [
-        ["Students", analytics?.totals.users ?? 0],
-        ["Quizzes", analytics?.totals.quizzes ?? 0],
-        ["Attempts", analytics?.totals.attempts ?? 0],
-        ["Categories", analytics?.totals.categories ?? 0]
+        ["Students", analytics?.studentStats?.total ?? analytics?.totals.users ?? 0],
+        ["Published quizzes", analytics?.quizStats?.published ?? 0],
+        ["Submitted attempts", analytics?.attemptStats?.submitted ?? analytics?.totals.attempts ?? 0],
+        ["Pass rate", `${Number(analytics?.attemptStats?.passRate ?? 0).toFixed(1)}%`]
       ]
-    : [["Available quizzes", "Live"], ["Attempts", "Track"], ["Scores", "Review"], ["Rank", "Compare"]];
+    : [
+        ["Attempts", submittedAttempts.length],
+        ["Average score", `${averageScore.toFixed(1)}%`],
+        ["Passed", passedAttempts],
+        ["Failed", Math.max(0, submittedAttempts.length - passedAttempts)]
+      ];
 
   return (
     <div className="space-y-5">
@@ -200,26 +212,106 @@ function Dashboard({ user, token, setView }) {
             <button className="btn btn-primary" onClick={() => setView("quizzes")}><BookOpen size={18} /> Quizzes</button>
           </div>
         )}
+        {user.role === "STUDENT" && (
+          <div className="flex gap-2">
+            <button className="btn btn-ghost" onClick={() => setView("history")}><Clock size={18} /> History</button>
+            <button className="btn btn-primary" onClick={() => setView("quizzes")}><Play size={18} /> Quizzes</button>
+          </div>
+        )}
       </div>
       <div className="grid gap-4 md:grid-cols-4">
         {stats.map(([label, value]) => <div className="panel p-5" key={label}><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-2xl font-black">{value}</p></div>)}
       </div>
       {user.role === "ADMIN" && (
-        <div className="panel overflow-hidden">
-          <div className="border-b border-slate-200 p-5 dark:border-slate-800">
-            <h3 className="text-xl font-black">Quiz performance</h3>
-          </div>
-          {(analytics?.quizPerformance || []).slice(0, 5).map((quiz) => (
-            <div className="grid gap-2 border-b border-slate-100 p-4 last:border-0 dark:border-slate-800 md:grid-cols-3" key={quiz.id}>
-              <p className="font-black">{quiz.title}</p>
-              <p className="font-semibold">{quiz.attempts} attempts</p>
-              <p className="font-semibold text-mint">Avg {Number(quiz.averageScore).toFixed(1)}</p>
+        <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
+          <div className="panel overflow-hidden">
+            <div className="border-b border-slate-200 p-5 dark:border-slate-800">
+              <h3 className="text-xl font-black">Quiz performance</h3>
             </div>
-          ))}
-          {!analytics?.quizPerformance?.length && <p className="p-5 text-slate-500">No quiz attempts yet.</p>}
+            {(analytics?.quizPerformance || []).slice(0, 6).map((quiz) => (
+              <ChartRow
+                key={quiz.id}
+                label={quiz.title}
+                value={Number(quiz.averagePercentage || 0)}
+                detail={`${quiz.submitted} submitted · ${quiz.passed} passed · ${quiz.failed} failed`}
+              />
+            ))}
+            {!analytics?.quizPerformance?.length && <p className="p-5 text-slate-500">No quiz attempts yet.</p>}
+          </div>
+          <div className="panel p-5">
+            <h3 className="text-xl font-black">Attempt analytics</h3>
+            <div className="mt-4 space-y-4">
+              <MetricBar label="Passed" value={analytics?.attemptStats?.passed || 0} total={analytics?.attemptStats?.submitted || 0} color="bg-mint" />
+              <MetricBar label="Failed" value={analytics?.attemptStats?.failed || 0} total={analytics?.attemptStats?.submitted || 0} color="bg-coral" />
+              <MetricBar label="In progress" value={analytics?.attemptStats?.inProgress || 0} total={(analytics?.attemptStats?.submitted || 0) + (analytics?.attemptStats?.inProgress || 0)} color="bg-gold" />
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="rounded-md bg-slate-100 p-3 dark:bg-slate-800"><p className="text-sm text-slate-500">Drafts</p><p className="font-black">{analytics?.quizStats?.drafts || 0}</p></div>
+              <div className="rounded-md bg-slate-100 p-3 dark:bg-slate-800"><p className="text-sm text-slate-500">Active students</p><p className="font-black">{analytics?.studentStats?.active || 0}</p></div>
+            </div>
+          </div>
         </div>
       )}
-      {user.role !== "ADMIN" && <button className="btn btn-primary" onClick={() => setView("quizzes")}><Play size={18} /> Open quizzes</button>}
+      {user.role !== "ADMIN" && (
+        <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
+          <div className="panel overflow-hidden">
+            <div className="border-b border-slate-200 p-5 dark:border-slate-800">
+              <h3 className="text-xl font-black">Performance chart</h3>
+            </div>
+            {submittedAttempts.slice(0, 6).map((attempt) => (
+              <ChartRow
+                key={attempt.id}
+                label={attempt.quiz.title}
+                value={Number(attempt.percentage || 0)}
+                detail={`${attempt.score} / ${attempt.totalPoints} · ${attempt.passed ? "Passed" : "Failed"}`}
+              />
+            ))}
+            {submittedAttempts.length === 0 && <p className="p-5 text-slate-500">No attempts yet.</p>}
+          </div>
+          <div className="panel overflow-hidden">
+            <div className="border-b border-slate-200 p-5 dark:border-slate-800">
+              <h3 className="text-xl font-black">Recent history</h3>
+            </div>
+            {submittedAttempts.slice(0, 4).map((attempt) => (
+              <div className="border-b border-slate-100 p-4 last:border-0 dark:border-slate-800" key={attempt.id}>
+                <p className="font-black">{attempt.quiz.title}</p>
+                <p className="mt-1 text-sm text-slate-500">{Number(attempt.percentage || 0).toFixed(1)}% · {attempt.passed ? "Passed" : "Failed"}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChartRow({ label, value, detail }) {
+  const percent = Math.max(0, Math.min(100, value));
+  return (
+    <div className="border-b border-slate-100 p-4 last:border-0 dark:border-slate-800">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <p className="font-black">{label}</p>
+        <p className="text-sm font-black text-mint">{percent.toFixed(1)}%</p>
+      </div>
+      <div className="h-3 overflow-hidden rounded-md bg-slate-200 dark:bg-slate-800">
+        <div className="h-full rounded-md bg-mint" style={{ width: `${percent}%` }} />
+      </div>
+      <p className="mt-2 text-sm text-slate-500">{detail}</p>
+    </div>
+  );
+}
+
+function MetricBar({ label, value, total, color }) {
+  const percent = total ? (value / total) * 100 : 0;
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between text-sm">
+        <span className="font-bold text-slate-600 dark:text-slate-300">{label}</span>
+        <span className="font-black">{value}</span>
+      </div>
+      <div className="h-3 overflow-hidden rounded-md bg-slate-200 dark:bg-slate-800">
+        <div className={`h-full rounded-md ${color}`} style={{ width: `${Math.max(0, Math.min(100, percent))}%` }} />
+      </div>
     </div>
   );
 }

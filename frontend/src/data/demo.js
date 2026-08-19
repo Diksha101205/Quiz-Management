@@ -27,6 +27,39 @@ export const demoLeaderboard = [
   { userId: "3", name: "Demo Student", totalScore: 74, attempts: 4 }
 ];
 
+export const demoAttempts = [
+  {
+    id: "demo-attempt-1",
+    score: 8,
+    totalPoints: 10,
+    percentage: 80,
+    passed: true,
+    status: "SUBMITTED",
+    startedAt: "2026-08-15T09:00:00.000Z",
+    quiz: { title: "React Basics", category: { name: "Web Development" } }
+  },
+  {
+    id: "demo-attempt-2",
+    score: 6,
+    totalPoints: 10,
+    percentage: 60,
+    passed: true,
+    status: "SUBMITTED",
+    startedAt: "2026-08-16T09:00:00.000Z",
+    quiz: { title: "Database Foundations", category: { name: "Backend" } }
+  },
+  {
+    id: "demo-attempt-3",
+    score: 4,
+    totalPoints: 10,
+    percentage: 40,
+    passed: false,
+    status: "SUBMITTED",
+    startedAt: "2026-08-17T09:00:00.000Z",
+    quiz: { title: "API Security", category: { name: "Backend" } }
+  }
+];
+
 export const demoQuizDetails = {
   "demo-react": {
     id: "demo-react",
