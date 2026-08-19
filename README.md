@@ -77,6 +77,8 @@ Backend health check: http://localhost:5000/api/health
 - Admin: `admin@quiz.local` / `Admin@12345`
 - Student: `student@quiz.local` / `Student@12345`
 
+You can also create a new account from the Register screen and choose either Student or Admin.
+
 ## Implemented API Endpoints
 
 Authentication:
@@ -240,6 +242,14 @@ Day 14 Deployment & Documentation:
 - Production database configuration
 - Environment variable templates
 - Production testing checklist
+
+Latest polish:
+
+- Register screen includes Student/Admin role selection.
+- Successful registration opens the dashboard.
+- Already registered link returns to the login screen.
+- Admin navigation includes Prepare Test.
+- Demo leaderboard includes 20 students.
 
 ## Testing
 

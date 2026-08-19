@@ -22,9 +22,26 @@ export const demoQuizzes = [
 ];
 
 export const demoLeaderboard = [
-  { userId: "1", name: "Aarav Sharma", totalScore: 92, attempts: 6 },
-  { userId: "2", name: "Nia Patel", totalScore: 88, attempts: 5 },
-  { userId: "3", name: "Demo Student", totalScore: 74, attempts: 4 }
+  { userId: "1", name: "Aarav Sharma", totalScore: 192, attempts: 6, averagePercentage: 96 },
+  { userId: "2", name: "Nia Patel", totalScore: 184, attempts: 6, averagePercentage: 92 },
+  { userId: "3", name: "Ishaan Verma", totalScore: 176, attempts: 5, averagePercentage: 88 },
+  { userId: "4", name: "Meera Rao", totalScore: 168, attempts: 5, averagePercentage: 84 },
+  { userId: "5", name: "Kabir Singh", totalScore: 160, attempts: 5, averagePercentage: 80 },
+  { userId: "6", name: "Anaya Gupta", totalScore: 154, attempts: 5, averagePercentage: 77 },
+  { userId: "7", name: "Riya Shah", totalScore: 149, attempts: 4, averagePercentage: 74.5 },
+  { userId: "8", name: "Vihaan Joshi", totalScore: 143, attempts: 4, averagePercentage: 71.5 },
+  { userId: "9", name: "Sara Khan", totalScore: 138, attempts: 4, averagePercentage: 69 },
+  { userId: "10", name: "Arjun Mehta", totalScore: 132, attempts: 4, averagePercentage: 66 },
+  { userId: "11", name: "Diya Iyer", totalScore: 126, attempts: 4, averagePercentage: 63 },
+  { userId: "12", name: "Reyansh Jain", totalScore: 120, attempts: 3, averagePercentage: 60 },
+  { userId: "13", name: "Tara Nair", totalScore: 116, attempts: 3, averagePercentage: 58 },
+  { userId: "14", name: "Advik Bose", totalScore: 112, attempts: 3, averagePercentage: 56 },
+  { userId: "15", name: "Kiara Das", totalScore: 108, attempts: 3, averagePercentage: 54 },
+  { userId: "16", name: "Neil Kapoor", totalScore: 104, attempts: 3, averagePercentage: 52 },
+  { userId: "17", name: "Aisha Malik", totalScore: 100, attempts: 3, averagePercentage: 50 },
+  { userId: "18", name: "Dev Patel", totalScore: 96, attempts: 2, averagePercentage: 48 },
+  { userId: "19", name: "Zoya Thomas", totalScore: 92, attempts: 2, averagePercentage: 46 },
+  { userId: "20", name: "Demo Student", totalScore: 88, attempts: 2, averagePercentage: 44 }
 ];
 
 export const demoAttempts = [

@@ -5,10 +5,9 @@ import { validate } from "../middleware/validate.js";
 
 const router = Router();
 
-router.use(authenticate, requireAdmin);
-router.get("/quizzes/:quizId/questions", listQuestions);
-router.post("/quizzes/:quizId/questions", validate(questionSchema), createQuestion);
-router.put("/questions/:id", validate(questionSchema), updateQuestion);
-router.delete("/questions/:id", deleteQuestion);
+router.get("/quizzes/:quizId/questions", authenticate, requireAdmin, listQuestions);
+router.post("/quizzes/:quizId/questions", authenticate, requireAdmin, validate(questionSchema), createQuestion);
+router.put("/questions/:id", authenticate, requireAdmin, validate(questionSchema), updateQuestion);
+router.delete("/questions/:id", authenticate, requireAdmin, deleteQuestion);
 
 export default router;

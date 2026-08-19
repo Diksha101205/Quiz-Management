@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { api } from "./api";
 import { demoAttempts, demoLeaderboard, demoQuizDetails, demoQuizzes } from "./data/demo";
 
-const emptyAuth = { name: "", email: "", password: "" };
+const emptyAuth = { name: "", email: "", password: "", role: "STUDENT" };
 
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem("quiz-token"));
@@ -54,8 +54,14 @@ export default function App() {
       const path = authMode === "login" ? "/auth/login" : "/auth/register";
       const body = authMode === "login" ? { email: authForm.email, password: authForm.password } : authForm;
       saveSession(await api(path, { method: "POST", body }));
+      setAuthForm(emptyAuth);
     } catch (error) {
-      setMessage(error.message);
+      if (authMode === "register" && error.message.toLowerCase().includes("already")) {
+        setAuthMode("login");
+        setMessage("Account already exists. Please login.");
+      } else {
+        setMessage(error.message);
+      }
     }
   };
 
@@ -102,13 +108,23 @@ export default function App() {
               </button>
             </div>
             {authMode === "register" && (
-              <input className="field mb-3" placeholder="Full name" value={authForm.name} onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })} />
+              <>
+                <input className="field mb-3" placeholder="Full name" value={authForm.name} onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })} />
+                <select className="field mb-3" value={authForm.role} onChange={(e) => setAuthForm({ ...authForm, role: e.target.value })}>
+                  <option value="STUDENT">Student</option>
+                  <option value="ADMIN">Admin</option>
+                </select>
+              </>
             )}
             <input className="field mb-3" placeholder="Email" type="email" value={authForm.email} onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })} />
             <input className="field mb-3" placeholder="Password" type="password" value={authForm.password} onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })} />
             {message && <p className="mb-3 rounded-md bg-coral/10 p-3 text-sm font-semibold text-coral">{message}</p>}
             <button className="btn btn-primary w-full" type="submit">{authMode === "login" ? "Login" : "Register"}</button>
-            <button type="button" className="mt-4 w-full text-sm font-bold text-mint" onClick={() => setAuthMode(authMode === "login" ? "register" : "login")}>
+            <button type="button" className="mt-4 w-full text-sm font-bold text-mint" onClick={() => {
+              setMessage("");
+              setAuthForm(emptyAuth);
+              setAuthMode(authMode === "login" ? "register" : "login");
+            }}>
               {authMode === "login" ? "Need an account?" : "Already registered?"}
             </button>
           </form>
@@ -139,7 +155,7 @@ export default function App() {
         <nav className="panel h-fit p-2">
           {[
             ["dashboard", "Dashboard", BarChart3],
-            ["quizzes", "Quizzes", BookOpen],
+            ["quizzes", user.role === "ADMIN" ? "Prepare Test" : "Quizzes", BookOpen],
             ...(user.role === "ADMIN" ? [["categories", "Categories", CheckCircle2]] : []),
             [user.role === "ADMIN" ? "users" : "history", user.role === "ADMIN" ? "Users" : "History", Users],
             ["leaderboard", "Leaderboard", Trophy]
@@ -201,7 +217,7 @@ function Dashboard({ user, token, setView }) {
         {user.role === "ADMIN" && (
           <div className="flex gap-2">
             <button className="btn btn-ghost" onClick={() => setView("users")}><Users size={18} /> Users</button>
-            <button className="btn btn-primary" onClick={() => setView("quizzes")}><BookOpen size={18} /> Quizzes</button>
+            <button className="btn btn-primary" onClick={() => setView("quizzes")}><BookOpen size={18} /> Prepare Test</button>
           </div>
         )}
         {user.role === "STUDENT" && (
@@ -525,7 +541,7 @@ function AdminQuizzes({ token }) {
     <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
       <div className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-2xl font-black">Quiz management</h2>
+          <h2 className="text-2xl font-black">Prepare test</h2>
           <span className="rounded-md bg-white px-3 py-2 text-sm font-black text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">{quizzes.length} total</span>
         </div>
         {quizzes.map((quiz) => (

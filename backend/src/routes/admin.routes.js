@@ -4,9 +4,8 @@ import { authenticate, requireAdmin } from "../middleware/auth.js";
 
 const router = Router();
 
-router.use(authenticate, requireAdmin);
-router.get("/attempts", allAttempts);
-router.get("/attempts/:id", adminAttempt);
-router.get("/analytics", analytics);
+router.get("/attempts", authenticate, requireAdmin, allAttempts);
+router.get("/attempts/:id", authenticate, requireAdmin, adminAttempt);
+router.get("/analytics", authenticate, requireAdmin, analytics);
 
 export default router;

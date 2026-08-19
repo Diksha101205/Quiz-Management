@@ -5,10 +5,9 @@ import { validate } from "../middleware/validate.js";
 
 const router = Router();
 
-router.use(authenticate, requireStudent);
-router.post("/quizzes/:quizId/start", startQuiz);
-router.post("/quizzes/:quizId/submit", validate(submitSchema), submitQuiz);
-router.get("/attempts", myAttempts);
-router.get("/attempts/:id", getAttempt);
+router.post("/quizzes/:quizId/start", authenticate, requireStudent, startQuiz);
+router.post("/quizzes/:quizId/submit", authenticate, requireStudent, validate(submitSchema), submitQuiz);
+router.get("/attempts", authenticate, requireStudent, myAttempts);
+router.get("/attempts/:id", authenticate, requireStudent, getAttempt);
 
 export default router;

@@ -7,7 +7,8 @@ export const registerSchema = z.object({
   body: z.object({
     name: z.string().min(2),
     email: z.string().email().toLowerCase(),
-    password: z.string().min(8)
+    password: z.string().min(8),
+    role: z.enum(["ADMIN", "STUDENT"]).default("STUDENT")
   })
 });
 
@@ -34,7 +35,8 @@ export const register = asyncHandler(async (req, res) => {
     data: {
       name: req.body.name,
       email: req.body.email,
-      passwordHash: await hashPassword(req.body.password)
+      passwordHash: await hashPassword(req.body.password),
+      role: req.body.role
     }
   });
 
@@ -66,4 +68,3 @@ export const forgotPassword = asyncHandler(async (_req, res) => {
 export const resetPassword = asyncHandler(async (_req, res) => {
   res.json({ message: "Password reset endpoint placeholder created" });
 });
-
