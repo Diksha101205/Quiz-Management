@@ -4,13 +4,12 @@ export default {
   theme: {
     extend: {
       colors: {
-        ink: "#18212f",
-        mint: "#1f9d7a",
-        coral: "#e36b5d",
-        gold: "#e2a53a"
+        ink: "#0b1220",
+        mint: "#0b1f3a",
+        coral: "#b45309",
+        gold: "#d4af37"
       }
     }
   },
   plugins: []
 };
-

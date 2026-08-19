@@ -30,6 +30,8 @@ Required environment variables:
 - `PORT`
 - `CLIENT_URL`
 
+Use the existing `.env`, `backend/.env`, and `frontend/.env` files as the source for local values, then set production values directly in your hosting dashboard.
+
 ## Production Database
 
 Use a hosted PostgreSQL database. Common options are Render PostgreSQL, Railway PostgreSQL, Supabase, Neon, or AWS RDS.
@@ -59,4 +61,3 @@ For production, replace the demo seed passwords immediately or create the admin 
 - Review result answers and explanations.
 - Confirm overall and category leaderboards update.
 - Confirm admin analytics show pass/fail, student, quiz, and attempt statistics.
-

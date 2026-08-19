@@ -31,12 +31,9 @@ docker-compose.yml
 
 ## Day 1 Setup
 
-1. Copy environment files.
+1. Check the environment files.
 
-```bash
-cp .env.example backend/.env
-cp frontend/.env.example frontend/.env
-```
+The project uses `.env`, `backend/.env`, and `frontend/.env` directly.
 
 If you created the database manually in pgAdmin as `QuizManagementdb`, update `backend/.env` like this:
 
@@ -259,10 +256,5 @@ npm run build --prefix frontend
 ```
 
 ## Deployment
-
-Production environment templates are included in:
-
-- `backend/.env.production.example`
-- `frontend/.env.production.example`
 
 Deployment steps are documented in `docs/deployment.md`. A Render service blueprint is included in `render.yaml` for the backend.
