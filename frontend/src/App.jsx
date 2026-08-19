@@ -1,4 +1,4 @@
-import { BarChart3, BookOpen, CheckCircle2, Clock, LogOut, Moon, Play, Search, Shield, Sun, Trophy, UserPlus, Users } from "lucide-react";
+import { BarChart3, BookOpen, CheckCircle2, Clock, Edit3, LogOut, Moon, Play, Search, Shield, Sun, Trash2, Trophy, UserPlus, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { api } from "./api";
 import { demoLeaderboard, demoQuizzes } from "./data/demo";
@@ -187,14 +187,37 @@ function Dashboard({ user, token, setView }) {
 
   return (
     <div className="space-y-5">
-      <div className="panel p-6">
-        <p className="text-sm font-bold uppercase text-mint">Welcome, {user.name}</p>
-        <h2 className="mt-2 text-3xl font-black">{user.role === "ADMIN" ? "Platform overview" : "Ready for your next assessment"}</h2>
+      <div className="panel flex flex-wrap items-center justify-between gap-4 p-6">
+        <div>
+          <p className="text-sm font-bold uppercase text-mint">Welcome, {user.name}</p>
+          <h2 className="mt-2 text-3xl font-black">{user.role === "ADMIN" ? "Admin dashboard" : "Ready for your next assessment"}</h2>
+        </div>
+        {user.role === "ADMIN" && (
+          <div className="flex gap-2">
+            <button className="btn btn-ghost" onClick={() => setView("users")}><Users size={18} /> Users</button>
+            <button className="btn btn-primary" onClick={() => setView("quizzes")}><BookOpen size={18} /> Quizzes</button>
+          </div>
+        )}
       </div>
       <div className="grid gap-4 md:grid-cols-4">
         {stats.map(([label, value]) => <div className="panel p-5" key={label}><p className="text-sm text-slate-500">{label}</p><p className="mt-2 text-2xl font-black">{value}</p></div>)}
       </div>
-      <button className="btn btn-primary" onClick={() => setView("quizzes")}><Play size={18} /> Open quizzes</button>
+      {user.role === "ADMIN" && (
+        <div className="panel overflow-hidden">
+          <div className="border-b border-slate-200 p-5 dark:border-slate-800">
+            <h3 className="text-xl font-black">Quiz performance</h3>
+          </div>
+          {(analytics?.quizPerformance || []).slice(0, 5).map((quiz) => (
+            <div className="grid gap-2 border-b border-slate-100 p-4 last:border-0 dark:border-slate-800 md:grid-cols-3" key={quiz.id}>
+              <p className="font-black">{quiz.title}</p>
+              <p className="font-semibold">{quiz.attempts} attempts</p>
+              <p className="font-semibold text-mint">Avg {Number(quiz.averageScore).toFixed(1)}</p>
+            </div>
+          ))}
+          {!analytics?.quizPerformance?.length && <p className="p-5 text-slate-500">No quiz attempts yet.</p>}
+        </div>
+      )}
+      {user.role !== "ADMIN" && <button className="btn btn-primary" onClick={() => setView("quizzes")}><Play size={18} /> Open quizzes</button>}
     </div>
   );
 }
@@ -202,9 +225,11 @@ function Dashboard({ user, token, setView }) {
 function AdminQuizzes({ token }) {
   const [quizzes, setQuizzes] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [form, setForm] = useState({ title: "", description: "", durationMinutes: 10, difficulty: "MEDIUM", maxAttempts: 1, categoryId: "" });
+  const blankForm = { id: null, title: "", description: "", durationMinutes: 10, difficulty: "MEDIUM", maxAttempts: 1, categoryId: "" };
+  const [form, setForm] = useState(blankForm);
   const [question, setQuestion] = useState({ quizId: "", text: "", options: "Option A\nOption B\nOption C\nOption D", correctIndex: 0, points: 1, negativePoints: 0 });
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
   const load = () => {
     api("/quizzes", { token }).then(setQuizzes).catch(() => setQuizzes(demoQuizzes));
@@ -213,45 +238,102 @@ function AdminQuizzes({ token }) {
 
   useEffect(load, [token]);
 
-  const createQuiz = async (event) => {
+  const saveQuiz = async (event) => {
     event.preventDefault();
-    await api("/quizzes", { method: "POST", token, body: { ...form, categoryId: form.categoryId || null } });
-    setForm({ ...form, title: "", description: "" });
-    load();
+    setError("");
+    try {
+      const body = { ...form, categoryId: form.categoryId || null };
+      delete body.id;
+      await api(form.id ? `/quizzes/${form.id}` : "/quizzes", { method: form.id ? "PUT" : "POST", token, body });
+      setForm(blankForm);
+      setMessage(form.id ? "Quiz updated" : "Quiz created");
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   const addQuestion = async (event) => {
     event.preventDefault();
-    await api(`/quizzes/${question.quizId}/questions`, {
-      method: "POST",
-      token,
-      body: { ...question, options: question.options.split("\n").filter(Boolean) }
+    setError("");
+    try {
+      await api(`/quizzes/${question.quizId}/questions`, {
+        method: "POST",
+        token,
+        body: { ...question, options: question.options.split("\n").filter(Boolean) }
+      });
+      setMessage("Question added");
+      setQuestion({ ...question, text: "" });
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const editQuiz = (quiz) => {
+    setForm({
+      id: quiz.id,
+      title: quiz.title,
+      description: quiz.description,
+      durationMinutes: quiz.durationMinutes,
+      difficulty: quiz.difficulty,
+      maxAttempts: quiz.maxAttempts || 1,
+      categoryId: quiz.categoryId || ""
     });
-    setMessage("Question added");
+  };
+
+  const deleteQuiz = async (quizId) => {
+    setError("");
+    try {
+      await api(`/quizzes/${quizId}`, { method: "DELETE", token });
+      setMessage("Quiz deleted");
+      if (form.id === quizId) setForm(blankForm);
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
   };
 
   return (
     <div className="grid gap-5 xl:grid-cols-[1fr_360px]">
       <div className="space-y-4">
-        <h2 className="text-2xl font-black">Manage quizzes</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-2xl font-black">Quiz management</h2>
+          <span className="rounded-md bg-white px-3 py-2 text-sm font-black text-slate-600 shadow-sm dark:bg-slate-900 dark:text-slate-300">{quizzes.length} total</span>
+        </div>
         {quizzes.map((quiz) => (
-          <div className="panel flex flex-wrap items-center justify-between gap-4 p-5" key={quiz.id}>
+          <div className="panel grid gap-4 p-5 lg:grid-cols-[1fr_auto]" key={quiz.id}>
             <div>
-              <p className="font-black">{quiz.title}</p>
-              <p className="text-sm text-slate-500">{quiz.category?.name || "Uncategorized"} · {quiz.difficulty} · {quiz.durationMinutes} min</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-black">{quiz.title}</p>
+                <span className={`rounded-md px-2 py-1 text-xs font-black ${quiz.isPublished ? "bg-mint/10 text-mint" : "bg-slate-200 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}>
+                  {quiz.isPublished ? "Published" : "Draft"}
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-slate-500">{quiz.category?.name || "Uncategorized"} · {quiz.difficulty} · {quiz.durationMinutes} min · {quiz._count?.questions ?? 0} questions · {quiz._count?.attempts ?? 0} attempts</p>
+              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">{quiz.description}</p>
             </div>
-            <button className="btn btn-ghost" onClick={() => api(`/quizzes/${quiz.id}/publish`, { method: "PATCH", token }).then(load)}>
-              {quiz.isPublished ? "Unpublish" : "Publish"}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button className="btn btn-ghost" title="Edit quiz" onClick={() => editQuiz(quiz)}><Edit3 size={18} /> Edit</button>
+              <button className="btn btn-ghost" title="Delete quiz" onClick={() => deleteQuiz(quiz.id)}><Trash2 size={18} /> Delete</button>
+              <button className="btn btn-primary" onClick={() => api(`/quizzes/${quiz.id}/publish`, { method: "PATCH", token }).then(load).catch((err) => setError(err.message))}>
+                {quiz.isPublished ? "Unpublish" : "Publish"}
+              </button>
+            </div>
           </div>
         ))}
+        {quizzes.length === 0 && <div className="panel p-6 text-slate-500">No quizzes yet. Create the first quiz from the form.</div>}
       </div>
       <div className="space-y-5">
-        <form className="panel space-y-3 p-5" onSubmit={createQuiz}>
-          <h3 className="font-black">Create quiz</h3>
+        <form className="panel space-y-3 p-5" onSubmit={saveQuiz}>
+          <div className="flex items-center justify-between">
+            <h3 className="font-black">{form.id ? "Edit quiz" : "Create quiz"}</h3>
+            {form.id && <button type="button" className="text-sm font-bold text-coral" onClick={() => setForm(blankForm)}>Cancel</button>}
+          </div>
           <input className="field" placeholder="Title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
           <textarea className="field" placeholder="Description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           <input className="field" type="number" min="1" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: e.target.value })} />
+          <input className="field" type="number" min="1" value={form.maxAttempts} onChange={(e) => setForm({ ...form, maxAttempts: e.target.value })} />
           <select className="field" value={form.difficulty} onChange={(e) => setForm({ ...form, difficulty: e.target.value })}>
             <option>EASY</option><option>MEDIUM</option><option>HARD</option>
           </select>
@@ -259,7 +341,7 @@ function AdminQuizzes({ token }) {
             <option value="">No category</option>
             {categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}
           </select>
-          <button className="btn btn-primary w-full"><CheckCircle2 size={18} /> Save quiz</button>
+          <button className="btn btn-primary w-full"><CheckCircle2 size={18} /> {form.id ? "Update quiz" : "Save quiz"}</button>
         </form>
         <form className="panel space-y-3 p-5" onSubmit={addQuestion}>
           <h3 className="font-black">Add question</h3>
@@ -271,8 +353,9 @@ function AdminQuizzes({ token }) {
           <textarea className="field" value={question.options} onChange={(e) => setQuestion({ ...question, options: e.target.value })} />
           <input className="field" type="number" min="0" value={question.correctIndex} onChange={(e) => setQuestion({ ...question, correctIndex: e.target.value })} />
           <button className="btn btn-primary w-full"><UserPlus size={18} /> Add question</button>
-          {message && <p className="text-sm font-bold text-mint">{message}</p>}
         </form>
+        {message && <p className="rounded-md bg-mint/10 p-3 text-sm font-bold text-mint">{message}</p>}
+        {error && <p className="rounded-md bg-coral/10 p-3 text-sm font-bold text-coral">{error}</p>}
       </div>
     </div>
   );
@@ -375,16 +458,64 @@ function Attempt({ token, attempt, onDone }) {
 
 function AdminUsers({ token }) {
   const [users, setUsers] = useState([]);
-  useEffect(() => { api("/users", { token }).then(setUsers).catch(() => setUsers([])); }, [token]);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const load = () => api("/users", { token }).then(setUsers).catch(() => setUsers([]));
+
+  useEffect(() => { load(); }, [token]);
+
+  const updateUser = async (userId, body) => {
+    setMessage("");
+    setError("");
+    try {
+      await api(`/users/${userId}`, { method: "PUT", token, body });
+      setMessage("User updated");
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const toggleStatus = async (user) => {
+    setMessage("");
+    setError("");
+    try {
+      await api(`/users/${user.id}/status`, { method: "PATCH", token, body: { isActive: !user.isActive } });
+      setMessage(user.isActive ? "User deactivated" : "User activated");
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   return (
-    <div className="panel overflow-hidden">
-      <div className="border-b border-slate-200 p-5 dark:border-slate-800"><h2 className="text-2xl font-black">Students and admins</h2></div>
-      {users.map((user) => (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 p-4 last:border-0 dark:border-slate-800" key={user.id}>
-          <div><p className="font-black">{user.name}</p><p className="text-sm text-slate-500">{user.email} · {user.role}</p></div>
-          <span className={`rounded-md px-2 py-1 text-xs font-black ${user.isActive ? "bg-mint/10 text-mint" : "bg-coral/10 text-coral"}`}>{user.isActive ? "Active" : "Inactive"}</span>
+    <div className="space-y-4">
+      <div className="panel flex flex-wrap items-center justify-between gap-3 p-5">
+        <div>
+          <h2 className="text-2xl font-black">User management</h2>
+          <p className="text-sm text-slate-500">Activate accounts and assign admin or student roles.</p>
         </div>
-      ))}
+        <span className="rounded-md bg-mint/10 px-3 py-2 text-sm font-black text-mint">{users.length} users</span>
+      </div>
+      {message && <p className="rounded-md bg-mint/10 p-3 text-sm font-bold text-mint">{message}</p>}
+      {error && <p className="rounded-md bg-coral/10 p-3 text-sm font-bold text-coral">{error}</p>}
+      <div className="panel overflow-hidden">
+        {users.map((user) => (
+          <div className="grid gap-3 border-b border-slate-100 p-4 last:border-0 dark:border-slate-800 lg:grid-cols-[1fr_160px_140px_170px]" key={user.id}>
+            <div>
+              <p className="font-black">{user.name}</p>
+              <p className="text-sm text-slate-500">{user.email}</p>
+            </div>
+            <select className="field" value={user.role} onChange={(e) => updateUser(user.id, { role: e.target.value })}>
+              <option value="STUDENT">Student</option>
+              <option value="ADMIN">Admin</option>
+            </select>
+            <span className={`flex items-center justify-center rounded-md px-2 py-1 text-xs font-black ${user.isActive ? "bg-mint/10 text-mint" : "bg-coral/10 text-coral"}`}>{user.isActive ? "Active" : "Inactive"}</span>
+            <button className="btn btn-ghost" onClick={() => toggleStatus(user)}>{user.isActive ? "Deactivate" : "Activate"}</button>
+          </div>
+        ))}
+        {users.length === 0 && <p className="p-5 text-slate-500">No users found.</p>}
+      </div>
     </div>
   );
 }

@@ -135,3 +135,32 @@ Leaderboard:
 
 Correct answers, scores, quiz availability, user roles, and attempt eligibility are checked by the backend. The frontend only displays quiz content and sends selected answers.
 
+## Completed Milestones
+
+Day 2 Authentication:
+
+- Student registration
+- Login and logout
+- Password hashing
+- JWT session authentication
+
+Day 3 Role-Based Authorization:
+
+- Admin role
+- Student role
+- Protected API routes
+- Admin and student middleware
+
+Day 4 Admin Dashboard:
+
+- Admin dashboard layout
+- Statistics cards
+- Sidebar navigation
+- User management with role and activation controls
+
+Day 5 Quiz Management:
+
+- Create quiz
+- Edit quiz
+- Delete quiz
+- Publish and unpublish quiz
