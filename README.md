@@ -38,6 +38,14 @@ cp .env.example backend/.env
 cp frontend/.env.example frontend/.env
 ```
 
+If you created the database manually in pgAdmin as `QuizManagementdb`, update `backend/.env` like this:
+
+```bash
+DATABASE_URL="postgresql://postgres:YOUR_POSTGRES_PASSWORD@localhost:5432/QuizManagementdb?schema=public"
+```
+
+Replace `YOUR_POSTGRES_PASSWORD` with the password you use to login to PostgreSQL/pgAdmin. If this password is wrong, registration will fail because the backend cannot save the new user.
+
 2. Install dependencies.
 
 ```bash

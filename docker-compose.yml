@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_USER: quiz_admin
       POSTGRES_PASSWORD: quiz_password
-      POSTGRES_DB: quiz_management
+      POSTGRES_DB: QuizManagementdb
     ports:
       - "5432:5432"
     volumes:
@@ -14,4 +14,3 @@ services:
 
 volumes:
   postgres_data:
-

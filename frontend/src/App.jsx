@@ -92,11 +92,6 @@ export default function App() {
             <p className="mt-5 max-w-xl text-lg text-slate-600 dark:text-slate-300">
               Create quizzes, run timed attempts, score submissions automatically, and track performance from role-based dashboards.
             </p>
-            <div className="mt-8 grid max-w-xl grid-cols-3 gap-3">
-              {["JWT auth", "Timers", "Analytics"].map((item) => (
-                <div key={item} className="panel p-4 text-center text-sm font-bold">{item}</div>
-              ))}
-            </div>
           </div>
 
           <form onSubmit={submitAuth} className="panel p-6">
@@ -116,9 +111,6 @@ export default function App() {
             <button type="button" className="mt-4 w-full text-sm font-bold text-mint" onClick={() => setAuthMode(authMode === "login" ? "register" : "login")}>
               {authMode === "login" ? "Need an account?" : "Already registered?"}
             </button>
-            <p className="mt-5 rounded-md bg-slate-100 p-3 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-              Demo after seeding: admin@quiz.local / Admin@12345 or student@quiz.local / Student@12345
-            </p>
           </form>
         </section>
       </main>
