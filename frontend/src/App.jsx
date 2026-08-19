@@ -980,9 +980,46 @@ function History({ token }) {
 }
 
 function Leaderboard() {
-  const [rows, setRows] = useState(demoLeaderboard);
-  useEffect(() => { api("/leaderboard").then(setRows).catch(() => {}); }, []);
-  return <ListPanel title="Leaderboard" rows={rows.map((row, index) => [`#${index + 1} ${row.name}`, `${row.totalScore} pts`, `${row.attempts} attempts`])} />;
+  const [rows, setRows] = useState(demoLeaderboard.map((row, index) => ({ ...row, rank: index + 1, averagePercentage: 0, bestPercentage: 0 })));
+  const [categories, setCategories] = useState([]);
+  const [categoryId, setCategoryId] = useState("");
+
+  useEffect(() => {
+    api("/categories").then(setCategories).catch(() => setCategories([]));
+  }, []);
+
+  useEffect(() => {
+    api(`/leaderboard${categoryId ? `?categoryId=${categoryId}` : ""}`)
+      .then((payload) => setRows(payload.rows || payload))
+      .catch(() => {});
+  }, [categoryId]);
+
+  return (
+    <div className="space-y-5">
+      <div className="panel flex flex-wrap items-center justify-between gap-3 p-5">
+        <div>
+          <h2 className="text-2xl font-black">Leaderboard</h2>
+          <p className="text-sm text-slate-500">{categoryId ? "Category ranking" : "Overall ranking"}</p>
+        </div>
+        <select className="field max-w-xs" value={categoryId} onChange={(event) => setCategoryId(event.target.value)}>
+          <option value="">Overall leaderboard</option>
+          {categories.map((category) => <option value={category.id} key={category.id}>{category.name}</option>)}
+        </select>
+      </div>
+      <div className="panel overflow-hidden">
+        {rows.map((row, index) => (
+          <div className="grid gap-3 border-b border-slate-100 p-4 last:border-0 dark:border-slate-800 md:grid-cols-[90px_1fr_140px_140px_120px]" key={row.userId}>
+            <p className="text-xl font-black text-mint">#{row.rank || index + 1}</p>
+            <p className="font-black">{row.name}</p>
+            <p className="font-semibold">{row.totalScore} pts</p>
+            <p className="font-semibold">{Number(row.averagePercentage || 0).toFixed(1)}% avg</p>
+            <p className="font-semibold">{row.attempts} attempts</p>
+          </div>
+        ))}
+        {rows.length === 0 && <p className="p-5 text-slate-500">No leaderboard records yet.</p>}
+      </div>
+    </div>
+  );
 }
 
 function ListPanel({ title, rows }) {

@@ -130,6 +130,7 @@ Admin Results:
 Leaderboard:
 
 - `GET /api/leaderboard`
+- `GET /api/leaderboard?categoryId=:categoryId`
 
 ## Security Notes
 
@@ -210,3 +211,50 @@ Day 11 Admin Analytics:
 - Quiz statistics
 - Attempt statistics
 - Pass/fail analytics
+
+Day 12 Leaderboard:
+
+- Ranking system
+- Overall leaderboard
+- Category leaderboard
+
+Day 13 Testing & Security:
+
+- Authentication tests
+- Authorization tests
+- Quiz validation tests
+- Timer tests
+- Score calculation tests
+- Unauthorized access checks
+- Input validation checks
+
+Day 14 Deployment & Documentation:
+
+- Frontend deployment settings
+- Backend deployment settings
+- Production database configuration
+- Environment variable templates
+- Production testing checklist
+
+## Testing
+
+Run backend tests:
+
+```bash
+npm test --prefix backend
+```
+
+Run frontend build verification:
+
+```bash
+npm run build --prefix frontend
+```
+
+## Deployment
+
+Production environment templates are included in:
+
+- `backend/.env.production.example`
+- `frontend/.env.production.example`
+
+Deployment steps are documented in `docs/deployment.md`. A Render service blueprint is included in `render.yaml` for the backend.

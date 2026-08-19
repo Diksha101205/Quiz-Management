@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { prisma } from "../db.js";
 import { ApiError, asyncHandler } from "../utils/errors.js";
+import { calculateResult, didPass } from "../utils/scoring.js";
 
 export const submitSchema = z.object({
   body: z.object({
@@ -56,10 +57,8 @@ export const submitQuiz = asyncHandler(async (req, res) => {
   if (new Date() > deadline && !req.body.autoSubmitted) throw new ApiError(400, "Quiz time has expired");
 
   const answers = req.body.answers;
-  const totalPoints = attempt.quiz.questions.reduce((sum, question) => sum + Number(question.points), 0);
-  const { score, review } = calculateResult(attempt.quiz.questions, answers);
-  const percentage = totalPoints > 0 ? Math.max(0, (score / totalPoints) * 100) : 0;
-  const passed = percentage >= Number(attempt.quiz.passingScorePercent);
+  const { score, totalPoints, percentage, review } = calculateResult(attempt.quiz.questions, answers);
+  const passed = didPass(percentage, attempt.quiz.passingScorePercent);
 
   const updated = await prisma.quizAttempt.update({
     where: { id: attempt.id },
@@ -87,31 +86,6 @@ export const getAttempt = asyncHandler(async (req, res) => {
   const review = calculateResult(attempt.quiz.questions, attempt.answers || {}).review;
   res.json({ attempt, review, passed: attempt.passed, percentage: attempt.percentage, passingScorePercent: attempt.quiz.passingScorePercent });
 });
-
-function calculateResult(questions, answers) {
-  let score = 0;
-  const review = questions.map((question) => {
-    const selectedIndex = answers[question.id];
-    const isSkipped = selectedIndex === undefined;
-    const isCorrect = selectedIndex === question.correctIndex;
-    const earnedPoints = isSkipped ? 0 : isCorrect ? Number(question.points) : -Number(question.negativePoints);
-    score += earnedPoints;
-    return {
-      questionId: question.id,
-      text: question.text,
-      options: question.options,
-      selectedIndex,
-      correctIndex: question.correctIndex,
-      isCorrect,
-      isSkipped,
-      earnedPoints,
-      points: question.points,
-      explanation: question.explanation
-    };
-  });
-
-  return { score, review };
-}
 
 function assertQuizAvailable(quiz) {
   const now = new Date();
